@@ -16,3 +16,6 @@ Health response identifies the persistent-host mode and reports pairing enabled.
 - Do not expose `creds.json`, auth folders or credentials via download endpoints.
 - Use the HTTPS public URL and keep rate-limit / resource controls enabled.
 - Treat Vercel preview as UI-only; pairing must be served by a long-running process.
+
+
+Status: this document is the current deployment gate. Do not deploy Vercel pairing handlers as live functionality; only the persistent Express host is enabled for pairing.
