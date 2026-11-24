@@ -9,11 +9,22 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.use(express.json());
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Content-Security-Policy', "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; connect-src 'self'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'");
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
+app.use(express.json({ limit: '2kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/pair', pairRouter);
 app.use('/qr', qrRouter);
+
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'EPHENYX Pair Portal', mode: 'persistent-host', pairingEnabled: true }));
 
 app.get('/', (req, res) => {
     const htmlPath = path.join(__dirname, 'public', 'index.html');

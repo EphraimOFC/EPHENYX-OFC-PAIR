@@ -1,12 +1,12 @@
 {
   "rewrites": [
-    { "source": "/favicon.ico", "destination": "/api/favicon.js" },
-    { "source": "/(.*)", "destination": "/api/pair.js" }
+    { "source": "/pair", "destination": "/api/pair" },
+    { "source": "/qr", "destination": "/api/qr" },
+    { "source": "/health", "destination": "/api/health" }
   ],
   "functions": {
-    "api/pair.js": { 
-      "maxDuration": 60,
-      "memory": 1024
-    }
+    "api/pair.js": { "maxDuration": 10 },
+    "api/qr.js": { "maxDuration": 10 },
+    "api/health.js": { "maxDuration": 5 }
   }
 }
