@@ -40,7 +40,7 @@ router.get('/', async (req, res) => {
       if (qr && !sent) {
         try {
           const data = await QRCode.toDataURL(qr, { errorCorrectionLevel: 'M', margin: 1, color: { dark: '#000000', light: '#FFFFFF' } });
-          if (!sent) { sent = true; clearTimeout(timeout); res.json({ qr: data, message: 'Scan in WhatsApp Linked Devices. Session credentials are not exported.', instructions: ['Open WhatsApp','Settings > Linked Devices','Link a Device','Scan this QR'] }); }
+          if (!sent) { sent = true; res.json({ qr: data, message: 'Scan in WhatsApp Linked Devices. Session credentials are not exported.', instructions: ['Open WhatsApp','Settings > Linked Devices','Link a Device','Scan this QR'] }); }
         } catch { if (!sent) { sent = true; clearTimeout(timeout); res.status(500).json({ code: 'QR generation failed.' }); } cleanup(id, sock, dir); }
       }
       if (connection === 'open') setTimeout(() => cleanup(id, sock, dir), 10_000);
