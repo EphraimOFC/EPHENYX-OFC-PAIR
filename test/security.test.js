@@ -8,7 +8,10 @@ const qr = fs.readFileSync(new URL('../qr.js', import.meta.url), 'utf8');
 test('pair route validates phone input before creating session folder', () => {
   assert.match(pair, /const parsed = pn\('\+' \+ raw\)/);
   assert.match(pair, /const id = randomUUID\(\)/);
-  assert.match(pair, /path\.join\(sessionsRoot, id\)/);
+  assert.match(pair, /path\.resolve\(sessionsRoot, id\)/);
+  assert.match(pair, /dir\.startsWith\(sessionsRoot \+ path\.sep\)/);
+  assert.match(pair, /router\.post\('\/'/);
+  assert.match(pair, /req\.body\?\.number/);
   assert.doesNotMatch(pair, /let dirs = '\.\/' \+ num/);
 });
 
@@ -22,7 +25,10 @@ test('pair and QR handlers never export creds files through WhatsApp', () => {
 test('pair endpoints include rate limits, active-session caps, bounded cleanup', () => {
   assert.match(pair, /MAX_REQUESTS/);
   assert.match(pair, /MAX_ACTIVE/);
-  assert.match(pair, /90_000/);\n  assert.match(pair, /LIMIT_STORE_MAX/);\n  assert.match(qr, /LIMIT_STORE_MAX/);\n  assert.match(pair, /req\.on\('aborted'/);
+  assert.match(pair, /90_000/);
+  assert.match(pair, /LIMIT_STORE_MAX/);
+  assert.match(qr, /LIMIT_STORE_MAX/);
+  assert.match(pair, /req\.on\('aborted'/);
   assert.match(qr, /rateLimited/);
   assert.match(qr, /30_000/);
 });
@@ -33,7 +39,14 @@ import healthServerless from '../api/health.js';
 
 function mockResponse(){return{headers:{},statusCode:200,body:null,setHeader(k,v){this.headers[k]=v;return this},status(n){this.statusCode=n;return this},json(v){this.body=v;return this}}}
 
-test('persistent portal frontend submits pairing numbers in a POST body',()=>{\n const ui=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');\n assert.match(ui,/fetch\('\/pair',\{method:'POST'/);\n assert.match(ui,/JSON\.stringify\(\{number:n\}\)/);\n assert.doesNotMatch(ui,/fetch\('\/pair\?number=/);\n});\n\ntest('Vercel pairing function fails closed and never creates/export session credentials',()=>{
+test('persistent portal frontend submits pairing numbers in a POST body',()=>{
+ const ui=fs.readFileSync(new URL('../public/index.html',import.meta.url),'utf8');
+ assert.match(ui,/fetch\('\/pair',\{method:'POST'/);
+ assert.match(ui,/JSON\.stringify\(\{number:n\}\)/);
+ assert.doesNotMatch(ui,/fetch\('\/pair\?number=/);
+});
+
+test('Vercel pairing function fails closed and never creates/export session credentials',()=>{
  const res=mockResponse();pairServerless({method:'GET',query:{number:'2348012345678'}},res);
  assert.equal(res.statusCode,503);assert.equal(res.body.code,'pairing_requires_persistent_host');assert.equal(res.headers['Cache-Control'],'no-store, no-cache, must-revalidate, private');
  const method=mockResponse();pairServerless({method:'POST'},method);assert.equal(method.statusCode,405);
