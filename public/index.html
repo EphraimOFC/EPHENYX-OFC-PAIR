@@ -1,72 +1,21 @@
 <!DOCTYPE html>
-<html><head><title>E TECH OFC PAIR</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#eef5ff"><title>EPHENYX Pairing</title>
 <style>
-body{background:#000;color:#fff;font-family:sans-serif;display:flex;justify-content:center;align-items:center;min-height:100vh;margin:0}
-.card{background:#111;border:2px solid #00ff88;border-radius:20px;padding:25px;width:92%;max-width:380px;text-align:center}
-input{width:90%;padding:14px;border-radius:10px;border:none;margin:12px 0;background:#222;color:#fff;text-align:center}
-button{width:95%;padding:14px;border-radius:10px;border:none;background:#00ff88;color:#000;font-weight:bold;font-size:16px}
-#code{font-size:30px;color:#00ff88;margin-top:15px;font-weight:bold}
-.toggle{display:flex;gap:8px;margin:16px 0}
-.toggle button{flex:1;padding:10px;font-size:14px}
-.toggle .active{background:#00ff88;color:#000}
-.toggle .inactive{background:#333;color:#fff}
-#qrDisplay{text-align:center;margin-top:16px}
-#qrDisplay img{max-width:250px;border-radius:8px}
-.hidden{display:none}
-</style></head><body>
-<div class="card">
-<h2 style="color:#00ff88">E TECH OFC</h2><p>MR EPHRAIM OFC - OFFICIAL PAIR</p>
-<p>Pair Site LIVE ✅ Render</p>
-
-<div class="toggle">
-<button id="pairBtn" class="active" onclick="setMode('pair')">Pair Code</button>
-<button id="qrBtn" class="inactive" onclick="setMode('qr')">QR Code</button>
-</div>
-
-<div id="pairSection">
-<input id="num" placeholder="2347072956206" value="2347072956206"/>
-<button onclick="getCode()">GET PAIR CODE</button>
-</div>
-
-<div id="qrSection" class="hidden">
-<button onclick="getQR()">GENERATE QR CODE</button>
-<div id="qrDisplay"></div>
-</div>
-
-<div id="code"></div><p id="msg"></p>
-
+:root{font-family:Inter,ui-sans-serif,system-ui,-apple-system,Segoe UI,sans-serif;color:#101b33;background:#edf4ff}
+*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:radial-gradient(ellipse at 5% 0,#d8e9ff,transparent 55%),radial-gradient(ellipse at 95% 100%,#d5fff1,transparent 45%),#f5f8ff}
+.wrap{width:min(100%,470px)}.top{display:flex;align-items:center;gap:12px;margin-bottom:20px}.mark{width:42px;height:42px;border-radius:14px;background:linear-gradient(135deg,#1668ff,#34c7b5);box-shadow:0 8px 22px #1c67ff35;color:white;display:grid;place-items:center;font-weight:900}.brand{font-weight:850;letter-spacing:.1em;font-size:14px}.subbrand{font-size:12px;color:#71809b;margin-top:3px}
+.card{background:#ffffffd9;backdrop-filter:blur(18px);border:1px solid #dce7f7;border-radius:26px;padding:28px;box-shadow:0 24px 70px #244d8418}.eyebrow{font-size:11px;font-weight:800;letter-spacing:.14em;color:#2467df;text-transform:uppercase}.title{font-size:28px;line-height:1.15;margin:9px 0 8px;letter-spacing:-.04em}.intro{font-size:14px;color:#697a96;line-height:1.55;margin:0 0 22px}.tabs{display:grid;grid-template-columns:1fr 1fr;background:#eef3fb;border-radius:13px;padding:4px;gap:4px;margin-bottom:18px}.tabs button{border:0;border-radius:10px;background:transparent;padding:11px;font-weight:750;color:#70809a;cursor:pointer}.tabs button.active{background:#fff;color:#205ee8;box-shadow:0 2px 8px #163d6b16}.label{display:block;font-size:12px;font-weight:750;color:#50617d;margin:0 0 8px}.input{width:100%;border:1px solid #d9e3f1;background:#f9fbff;border-radius:13px;padding:14px;font-size:16px;outline:none}.input:focus{border-color:#4380ff;box-shadow:0 0 0 3px #4380ff1c}.action{width:100%;border:0;border-radius:13px;margin-top:12px;padding:14px;color:white;background:linear-gradient(100deg,#1767ff,#17a6c7);font-size:14px;font-weight:800;cursor:pointer;box-shadow:0 10px 22px #1b69ff24}.action:disabled{opacity:.55;cursor:wait}.result{min-height:46px;margin-top:18px;text-align:center;color:#687a95;font-size:13px;line-height:1.5}.code{font-size:28px;font-weight:900;letter-spacing:.16em;color:#165ee8;margin:8px 0}.qr{display:block;max-width:230px;width:100%;margin:14px auto;border-radius:12px;background:white;padding:10px;border:1px solid #dce7f7}.notice{background:#fff7e9;border:1px solid #ffe2ad;color:#80500b;padding:12px;border-radius:12px;font-size:12px;line-height:1.5;margin-top:18px}.foot{text-align:center;color:#8a98ad;font-size:11px;margin:15px 0}.hide{display:none}
+</style></head><body><main class="wrap"><header class="top"><div class="mark">E</div><div><div class="brand">EPHENYX</div><div class="subbrand">Official pairing portal</div></div></header>
+<section class="card"><div class="eyebrow">Device linking</div><h1 class="title">Connect your WhatsApp</h1><p class="intro">Generate a pairing code or QR to link a device. Use only your own WhatsApp account.</p>
+<div class="tabs"><button id="pairTab" class="active" type="button">Phone code</button><button id="qrTab" type="button">QR scan</button></div>
+<section id="pairPane"><label class="label" for="number">Phone number with country code</label><input class="input" id="number" inputmode="numeric" autocomplete="tel" placeholder="2348012345678"><button class="action" id="pairAction" type="button">Generate pairing code</button></section>
+<section id="qrPane" class="hide"><p class="label">Scan with WhatsApp → Linked Devices</p><button class="action" id="qrAction" type="button">Generate QR code</button><div id="qrArea"></div></section>
+<div class="result" id="result" aria-live="polite"></div>
+<div class="notice"><strong>Security:</strong> This portal never sends session credentials to WhatsApp. Pairing is currently a standalone flow; secure transfer into the EPHENYX bot runtime is not connected yet. Do not treat this page as a completed bot deployment.</div></section><p class="foot">EPHENYX • Secure linking foundation</p></main>
 <script>
-let mode='pair';
-function setMode(m){
- mode=m;
- document.getElementById('pairBtn').className=m==='pair'?'active':'inactive';
- document.getElementById('qrBtn').className=m==='qr'?'active':'inactive';
- document.getElementById('pairSection').classList.toggle('hidden',m!=='pair');
- document.getElementById('qrSection').classList.toggle('hidden',m!=='qr');
- document.getElementById('code').innerText='';
- document.getElementById('msg').innerText='';
- document.getElementById('qrDisplay').innerHTML='';
-}
-async function getCode(){
- const n=document.getElementById('num').value;
- if(!n){alert('Enter number');return}
- document.getElementById('code').innerText='Wait 15 sec...';
- try{
-  const r=await fetch('/pair?number='+n,{method:'GET'});
-  const d=await r.json();
-  if(d.code){document.getElementById('code').innerText=d.code;document.getElementById('msg').innerText='WhatsApp > Linked Devices > Link with phone number';}
-  else{document.getElementById('code').innerText='Error';document.getElementById('msg').innerText=JSON.stringify(d);}
- }catch(e){document.getElementById('code').innerText='Failed';document.getElementById('msg').innerText=e.message;}
-}
-async function getQR(){
- document.getElementById('qrDisplay').innerHTML='<p>Generating QR...</p>';
- try{
-  const r=await fetch('/qr',{method:'GET'});
-  const d=await r.json();
-  if(d.qr){
-   document.getElementById('qrDisplay').innerHTML='<img src="'+d.qr+'" alt="QR Code"/><br><small>'+(d.instructions?.join('<br>')||'Scan with WhatsApp > Linked Devices')+'</small>';
-  }else{document.getElementById('qrDisplay').innerHTML='<p style="color:#ff8f8f">Error: '+(d.code||'Failed')+'</p>';}
- }catch(e){document.getElementById('qrDisplay').innerHTML='<p style="color:#ff8f8f">Failed: '+e.message+'</p>';}
-}
-</script>
-</div></body></html>
+const $=id=>document.getElementById(id);let mode='pair';
+function setMode(next){mode=next;$('pairTab').className=next==='pair'?'active':'';$('qrTab').className=next==='qr'?'active':'';$('pairPane').classList.toggle('hide',next!=='pair');$('qrPane').classList.toggle('hide',next!=='qr');$('result').textContent='';$('qrArea').replaceChildren();}
+$('pairTab').onclick=()=>setMode('pair');$('qrTab').onclick=()=>setMode('qr');
+$('pairAction').onclick=async()=>{const n=$('number').value.trim();if(!n){$('result').textContent='Enter your number in international format.';return;}const btn=$('pairAction');btn.disabled=true;$('result').textContent='Requesting code…';try{const r=await fetch('/pair?number='+encodeURIComponent(n));const d=await r.json();if(d.code){$('result').textContent='';const code=document.createElement('div');code.className='code';code.textContent=d.code;$('result').append(code,document.createTextNode('WhatsApp → Linked Devices → Link with phone number'));}else $('result').textContent=d.code||'Pairing request failed.';}catch{$('result').textContent='Request failed. Retry shortly.';}finally{btn.disabled=false;}};
+$('qrAction').onclick=async()=>{const btn=$('qrAction');btn.disabled=true;$('qrArea').replaceChildren();$('result').textContent='Generating QR…';try{const r=await fetch('/qr');const d=await r.json();if(d.qr){$('result').textContent='Open WhatsApp → Linked Devices → Link a Device';const img=document.createElement('img');img.className='qr';img.alt='WhatsApp linking QR code';img.src=d.qr;$('qrArea').append(img);}else $('result').textContent=d.code||'QR generation failed.';}catch{$('result').textContent='Request failed. Retry shortly.';}finally{btn.disabled=false;}};
+</script></body></html>
