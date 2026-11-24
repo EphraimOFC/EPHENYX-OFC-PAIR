@@ -1,187 +1,93 @@
 import express from 'express';
-import fs from 'fs';
 import pino from 'pino';
-import { makeWASocket, useMultiFileAuthState, delay, Browsers, jidNormalizedUser, fetchLatestBaileysVersion, DisconnectReason } from '@whiskeysockets/baileys';
+import { randomUUID } from 'crypto';
+import { makeWASocket, useMultiFileAuthState, delay, Browsers, fetchLatestBaileysVersion, DisconnectReason } from '@whiskeysockets/baileys';
 import pn from 'awesome-phonenumber';
+import fs from 'fs';
+import path from 'path';
 
 const router = express.Router();
+const sessionsRoot = path.resolve('./pair_sessions');
+const active = new Map();
+const limits = new Map();
+const MAX_ACTIVE = 3;
+const WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS = 4;
 
-function removeFile(FilePath) {
-    try {
-        if (!fs.existsSync(FilePath)) return false;
-        fs.rmSync(FilePath, { recursive: true, force: true });
-    } catch (e) {
-        console.error('Error removing file:', e);
-    }
+function rateLimited(ip) {
+  const now = Date.now();
+  const current = limits.get(ip) || { count: 0, start: now };
+  if (now - current.start > WINDOW_MS) { current.count = 0; current.start = now; }
+  current.count++;
+  limits.set(ip, current);
+  return current.count > MAX_REQUESTS;
+}
+function cleanup(id, sock, dir) {
+  const timer = active.get(id);
+  if (timer) clearTimeout(timer);
+  active.delete(id);
+  try { sock?.ws?.close(); } catch {}
+  try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
 }
 
 router.get('/', async (req, res) => {
-    let requestFinished = false;
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  if (rateLimited(ip)) return res.status(429).json({ code: 'Too many pairing requests. Wait 10 minutes and retry.' });
+  if (active.size >= MAX_ACTIVE) return res.status(503).json({ code: 'Pairing capacity is full. Try again shortly.' });
 
-    const safeSend = (statusCode, payload) => {
-        if (requestFinished || res.headersSent) return;
-        requestFinished = true;
-        res.status(statusCode).send(payload);
-    };
+  const raw = String(req.query.number || '').replace(/[^0-9]/g, '');
+  if (!raw) return res.status(400).json({ code: 'Enter your phone number with country code.' });
+  const parsed = pn('+' + raw);
+  if (!parsed.isValid()) return res.status(400).json({ code: 'Invalid international phone number.' });
+  const number = parsed.getNumber('e164').replace('+', '');
+  const id = randomUUID();
+  const dir = path.join(sessionsRoot, id);
+  fs.mkdirSync(dir, { recursive: true });
 
-    const requestTimeout = setTimeout(() => {
-        safeSend(504, { code: 'Timed out waiting for WhatsApp pairing code. Please try again.' });
-    }, 35000);
-
-    let num = req.query.number;
-    if (!num) {
-        clearTimeout(requestTimeout);
-        return safeSend(400, {
-            code: 'Phone number is required. Pass it as ?number=2367012345678'
-        });
+  let sock;
+  let done = false;
+  const finish = (status, payload) => {
+    if (done || res.headersSent) return;
+    done = true; res.status(status).json(payload);
+  };
+  const expire = setTimeout(() => cleanup(id, sock, dir), 90_000);
+  active.set(id, expire);
+  const reqTimeout = setTimeout(() => finish(504, { code: 'Pairing code timed out. Retry.' }), 35_000);
+  try {
+    const { state, saveCreds } = await useMultiFileAuthState(dir);
+    const { version } = await fetchLatestBaileysVersion();
+    sock = makeWASocket({
+      version, auth: state, printQRInTerminal: false,
+      logger: pino({ level: 'silent' }), browser: Browsers.windows('Chrome'),
+      markOnlineOnConnect: false, connectTimeoutMs: 30_000,
+      defaultQueryTimeoutMs: 30_000, keepAliveIntervalMs: 20_000,
+    });
+    sock.ev.on('creds.update', saveCreds);
+    sock.ev.on('connection.update', ({ connection, lastDisconnect }) => {
+      if (connection === 'open') {
+        // This endpoint is only a pairing-code generator. It does not export session credentials.
+        setTimeout(() => cleanup(id, sock, dir), 10_000);
+      }
+      if (connection === 'close') {
+        const code = lastDisconnect?.error?.output?.statusCode;
+        if (code === DisconnectReason.loggedOut || code === 401) cleanup(id, sock, dir);
+      }
+    });
+    await delay(2500);
+    if (state.creds.registered) {
+      clearTimeout(reqTimeout); finish(409, { code: 'Session already registered. Start a fresh request.' });
+      cleanup(id, sock, dir); return;
     }
-    let dirs = './' + (num || `session`);
-
-    await removeFile(dirs);
-
-    num = num.replace(/[^0-9]/g, '');
-
-    const phone = pn('+' + num);
-    if (!phone.isValid()) {
-        if (!res.headersSent) {
-            clearTimeout(requestTimeout);
-            return safeSend(400, { code: 'Invalid phone number. Please enter your full international number (e.g., 263701234567) without + or spaces.' });
-        }
-        return;
-    }
-    num = phone.getNumber('e164').replace('+', '');
-
-    async function initiateSession() {
-        const { state, saveCreds } = await useMultiFileAuthState(dirs);
-
-        try {
-            const { version, isLatest } = await fetchLatestBaileysVersion();
-            let jailbreakBot = makeWASocket({
-                version,
-                auth: state,
-                printQRInTerminal: false,
-                logger: pino({ level: "fatal" }).child({ level: "fatal" }),
-                browser: Browsers.windows('Chrome'),
-                markOnlineOnConnect: false,
-                generateHighQualityLinkPreview: false,
-                defaultQueryTimeoutMs: 60000,
-                connectTimeoutMs: 60000,
-                keepAliveIntervalMs: 30000,
-                retryRequestDelayMs: 250,
-                maxRetries: 5,
-            });
-
-            jailbreakBot.ev.on('connection.update', async (update) => {
-                const { connection, lastDisconnect, isNewLogin, isOnline } = update;
-
-                if (connection === 'open') {
-                    console.log("✅ Connected successfully!");
-                    console.log("📱 Sending session file to user...");
-                    
-                    try {
-                        const sessionKnight = fs.readFileSync(dirs + '/creds.json');
-
-                        const userJid = jidNormalizedUser(num + '@s.whatsapp.net');
-                        await jailbreakBot.sendMessage(userJid, {
-                            document: sessionKnight,
-                            mimetype: 'application/json',
-                            fileName: 'creds.json'
-                        });
-                        console.log("📄 Session file sent successfully");
-
-                        await jailbreakBot.sendMessage(userJid, {
-                            text: `⚠️ Do not share this file with anybody. It gives full access to your whatsapp. ⚠️\n\nGenerated by JAILBREAK session linker.`
-                        });
-                        console.log("⚠️ Security warning sent successfully");
-
-                        console.log("🧹 Cleaning up session...");
-                        await delay(1000);
-                        removeFile(dirs);
-                        console.log("✅ Session cleaned up successfully");
-                        console.log("🎉 Process completed successfully!");
-                    } catch (error) {
-                        console.error("❌ Error sending messages:", error);
-                        removeFile(dirs);
-                    }
-                }
-
-                if (isNewLogin) {
-                    console.log("🔐 New login via pair code");
-                }
-
-                if (isOnline) {
-                    console.log("📶 Client is online");
-                }
-
-                if (connection === 'close') {
-                    const statusCode = lastDisconnect?.error?.output?.statusCode;
-                    const shouldReconnect = statusCode !== DisconnectReason.loggedOut;
-
-                    if (!state.creds.registered) {
-                        clearTimeout(requestTimeout);
-                        safeSend(503, { code: 'Connection closed before pairing code was generated. Please try again.' });
-                        removeFile(dirs);
-                        return;
-                    }
-
-                    if (!shouldReconnect || statusCode === 401) {
-                        console.log("❌ Logged out from WhatsApp. Need to generate new pair code.");
-                    } else {
-                        console.log("🔁 Connection closed — restarting...");
-                        initiateSession();
-                    }
-                }
-            });
-
-            if (!state.creds.registered) {
-                await delay(3000);
-                num = num.replace(/[^\d+]/g, '');
-                if (num.startsWith('+')) num = num.substring(1);
-
-                try {
-                    let code = await jailbreakBot.requestPairingCode(num);
-                    code = code?.match(/.{1,4}/g)?.join('-') || code;
-                    if (!res.headersSent) {
-                        console.log({ num, code });
-                        clearTimeout(requestTimeout);
-                        safeSend(200, { code });
-                    }
-                } catch (error) {
-                    console.error('Error requesting pairing code:', error);
-                    clearTimeout(requestTimeout);
-                    safeSend(503, { code: 'Failed to get pairing code. Please check your phone number and try again.' });
-                }
-            }
-
-            jailbreakBot.ev.on('creds.update', saveCreds);
-        } catch (err) {
-            console.error('Error initializing session:', err);
-            clearTimeout(requestTimeout);
-            safeSend(503, { code: 'Service Unavailable' });
-        }
-    }
-
-    await initiateSession();
-
-    if (!requestFinished) {
-        // keep timeout active while socket negotiation is in flight
-    }
-});
-
-process.on('uncaughtException', (err) => {
-    let e = String(err);
-    if (e.includes("conflict")) return;
-    if (e.includes("not-authorized")) return;
-    if (e.includes("Socket connection timeout")) return;
-    if (e.includes("rate-overlimit")) return;
-    if (e.includes("Connection Closed")) return;
-    if (e.includes("Timed Out")) return;
-    if (e.includes("Value not found")) return;
-    if (e.includes("Stream Errored")) return;
-    if (e.includes("Stream Errored (restart required)")) return;
-    if (e.includes("statusCode: 515")) return;
-    if (e.includes("statusCode: 503")) return;
-    console.log('Caught exception: ', err);
+    const pairingCode = await sock.requestPairingCode(number);
+    const formatted = pairingCode?.match(/.{1,4}/g)?.join('-') || pairingCode;
+    clearTimeout(reqTimeout);
+    finish(200, { code: formatted, message: 'Use WhatsApp Linked Devices > Link with phone number. This site does not send or export session credentials.' });
+  } catch (err) {
+    clearTimeout(reqTimeout);
+    console.error('Pairing request failed:', err?.message || 'unknown error');
+    finish(503, { code: 'Pairing unavailable. Please retry shortly.' });
+    cleanup(id, sock, dir);
+  }
 });
 
 export default router;
