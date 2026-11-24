@@ -19,3 +19,5 @@ Health response identifies the persistent-host mode and reports pairing enabled.
 
 
 Status: this document is the current deployment gate. Do not deploy Vercel pairing handlers as live functionality; only the persistent Express host is enabled for pairing.
+
+Verified CSP and no-store headers are enabled by the persistent Express host.
