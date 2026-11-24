@@ -9,11 +9,21 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-app.disable('x-powered-by');\napp.use((req, res, next) => {\n    res.setHeader('X-Content-Type-Options', 'nosniff');\n    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');\n    res.setHeader('X-Frame-Options', 'DENY');\n    res.setHeader('Cache-Control', 'no-store');\n    next();\n});\napp.use(express.json({ limit: '2kb' }));
+app.disable('x-powered-by');
+app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('X-Frame-Options', 'DENY');
+    res.setHeader('Cache-Control', 'no-store');
+    next();
+});
+app.use(express.json({ limit: '2kb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/pair', pairRouter);
-app.use('/qr', qrRouter);\n\napp.get('/health', (_req, res) => res.json({ ok: true, service: 'EPHENYX Pair Portal', mode: 'persistent-host', pairingEnabled: true }));
+app.use('/qr', qrRouter);
+
+app.get('/health', (_req, res) => res.json({ ok: true, service: 'EPHENYX Pair Portal', mode: 'persistent-host', pairingEnabled: true }));
 
 app.get('/', (req, res) => {
     const htmlPath = path.join(__dirname, 'public', 'index.html');
