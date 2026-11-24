@@ -11,26 +11,34 @@ const sessionsRoot = path.resolve('./qr_sessions');
 const active = new Map();
 const limits = new Map();
 const WINDOW_MS = 10 * 60 * 1000;
+const MAX_REQUESTS = 3;
+const LIMIT_STORE_MAX = 10_000;
 function rateLimited(ip) {
-  const now = Date.now(), entry = limits.get(ip) || { count: 0, start: now };
+  const now = Date.now();
+  for (const [key, entry] of limits) if (now - entry.start > WINDOW_MS) limits.delete(key);
+  if (limits.size >= LIMIT_STORE_MAX && !limits.has(ip)) return true;
+  const entry = limits.get(ip) || { count: 0, start: now };
   if (now - entry.start > WINDOW_MS) { entry.count = 0; entry.start = now; }
   entry.count++; limits.set(ip, entry);
-  return entry.count > 3;
+  return entry.count > MAX_REQUESTS;
 }
 function cleanup(id, sock, dir) {
   const timer = active.get(id); if (timer) clearTimeout(timer);
   active.delete(id); try { sock?.ws?.close(); } catch {}
-  try { fs.rmSync(dir, { recursive: true, force: true }); } catch {}
+  try { const resolved = path.resolve(dir); if (resolved.startsWith(sessionsRoot + path.sep)) fs.rmSync(resolved, { recursive: true, force: true }); } catch {}
 }
 router.get('/', async (req, res) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   if (rateLimited(ip)) return res.status(429).json({ code: 'Too many QR requests. Wait 10 minutes.' });
   if (active.size >= 3) return res.status(503).json({ code: 'QR capacity full. Retry shortly.' });
-  const id = randomUUID(), dir = path.join(sessionsRoot, id);
-  fs.mkdirSync(dir, { recursive: true });
+  const id = randomUUID(); fs.mkdirSync(sessionsRoot, { recursive: true, mode: 0o700 });
+  const dir = path.resolve(sessionsRoot, id);
+  if (!dir.startsWith(sessionsRoot + path.sep)) return res.status(400).json({ code: 'Invalid session path.' });
+  fs.mkdirSync(dir, { recursive: true, mode: 0o700 });
   let sock, sent = false;
   const timeout = setTimeout(() => { if (!sent) { sent = true; res.status(408).json({ code: 'QR generation timeout.' }); } cleanup(id, sock, dir); }, 30_000);
   active.set(id, timeout);
+  req.on('aborted', () => cleanup(id, sock, dir));
   try {
     const { state, saveCreds } = await useMultiFileAuthState(dir);
     const { version } = await fetchLatestBaileysVersion();
